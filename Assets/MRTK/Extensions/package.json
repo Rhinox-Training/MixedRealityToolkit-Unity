@@ -1,10 +1,10 @@
 {
-    "name": "com.microsoft.mixedreality.toolkit.testutilities",
-    "displayName": "Mixed Reality Toolkit Test Utilities",
+    "name": "com.microsoft.mixedreality.toolkit.extensions",
+    "displayName": "Mixed Reality Toolkit Extensions",
     "msftFeatureCategory": "Mixed Reality Toolkit",
-    "version": "%version%",
+    "version": "2.5.1",
     "unity": "2019.4",
-    "description": "Test utilities for use with the Microsoft Mixed Reality Toolkit",
+    "description": "Extensions to the Microsoft Mixed Reality Toolkit. This package includes: Hand Physics Service, Lost Tracking Service and Scene Transition Service.",
     "keywords": [
         "mrtk",
         "microsoft",
@@ -12,9 +12,9 @@
         "reality",
         "augmented",
         "virtual",
-        "xr",
         "hololens",
-        "test"
+        "xr",
+        "extensions"
     ],
     "author": "Microsoft",
     "license": "MIT",
@@ -26,6 +26,7 @@
         "url": "https://github.com/microsoft/MixedRealityToolkit-Unity/issues"
       },
     "dependencies": {
-        "com.microsoft.mixedreality.toolkit.foundation": "%version%"
-    }
+        "com.microsoft.mixedreality.toolkit.foundation": "2.5.1"
+    },
+    %samples%
 }

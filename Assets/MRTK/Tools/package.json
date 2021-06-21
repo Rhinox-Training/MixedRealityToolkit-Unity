@@ -1,10 +1,10 @@
 {
-    "name": "com.microsoft.mixedreality.toolkit.standardassets",
-    "displayName": "Mixed Reality Toolkit Standard Assets",
+    "name": "com.microsoft.mixedreality.toolkit.tools",
+    "displayName": "Mixed Reality Toolkit Tools",
     "msftFeatureCategory": "Mixed Reality Toolkit",
-    "version": "%version%",
+    "version": "2.5.1",
     "unity": "2019.4",
-    "description": "Mixed Reality Toolkit standard assets, including; shaders, common materials and fonts.",
+    "description": "Tools for the Microsoft Mixed Reality Toolkit",
     "keywords": [
         "mrtk",
         "microsoft",
@@ -14,9 +14,7 @@
         "virtual",
         "xr",
         "hololens",
-        "assets",
-        "standardassets",
-        "coreassets"
+        "tools"
     ],
     "author": "Microsoft",
     "license": "MIT",
@@ -26,8 +24,8 @@
     },
     "bugs": {
         "url": "https://github.com/microsoft/MixedRealityToolkit-Unity/issues"
-    },
+      },
     "dependencies": {
-        "com.unity.textmeshpro": "2.1.4"
+        "com.microsoft.mixedreality.toolkit.foundation": "2.5.1"
     }
 }
