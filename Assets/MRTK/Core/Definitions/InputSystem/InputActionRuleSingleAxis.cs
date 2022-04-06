@@ -23,6 +23,8 @@ namespace Microsoft.MixedReality.Toolkit.Input
             this.baseAction = baseAction;
             this.ruleAction = ruleAction;
             this.criteria = criteria;
+            this.useCriteriaRule = false;
+            this.criteriaRule = new InputActionRuleCriteriaSingleAxis(criteria, ActionRuleComparison.Equals);
         }
 
         [SerializeField]
@@ -42,8 +44,22 @@ namespace Microsoft.MixedReality.Toolkit.Input
         [SerializeField]
         [Tooltip("The criteria to check against for determining if the action should be raised.")]
         private float criteria;
-
+        
         /// <inheritdoc />
         public float Criteria => criteria;
+        
+        [SerializeField]
+        [Tooltip("Boolean to toggle whether the InputSystem will check Criteria or CriteriaRule when parsing events.")]
+        private bool useCriteriaRule;
+
+        /// <inheritdoc />
+        public bool UseCriteriaRule => useCriteriaRule;
+        
+        [SerializeField]
+        [Tooltip("The custom criteria checking behaviour for this Action Rule, overrides criteria.")]
+        private InputActionRuleCriteriaSingleAxis criteriaRule;
+        
+        /// <inheritdoc />
+        public IInputActionRuleCriteria<float> CriteriaRule => criteriaRule;
     }
 }

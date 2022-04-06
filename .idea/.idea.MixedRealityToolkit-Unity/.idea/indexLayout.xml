@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ContentModelUserStore">
+    <attachedFolders />
+    <explicitIncludes>
+      <Path>Library/PackageCache/com.unity.ext.nunit@1.0.6</Path>
+      <Path>Library/PackageCache/com.unity.ide.rider@1.2.1</Path>
+      <Path>Library/PackageCache/com.unity.ide.vscode@1.2.3</Path>
+      <Path>Library/PackageCache/com.unity.multiplayer-hlapi@1.0.8</Path>
+      <Path>Library/PackageCache/com.unity.subsystemregistration@1.0.6</Path>
+      <Path>Library/PackageCache/com.unity.test-framework@1.1.24</Path>
+      <Path>Library/PackageCache/com.unity.textmeshpro@2.1.4</Path>
+      <Path>Library/PackageCache/com.unity.timeline@1.2.18</Path>
+      <Path>Library/PackageCache/com.unity.xr.arfoundation@2.1.18</Path>
+      <Path>Library/PackageCache/com.unity.xr.arsubsystems@2.1.18</Path>
+      <Path>Library/PackageCache/com.unity.xr.legacyinputhelpers@2.1.7</Path>
+      <Path>Library/PackageCache/com.unity.xr.openvr.standalone@2.0.5</Path>
+      <Path>Library/PackageCache/com.unity.xr.windowsmr.metro@4.2.1</Path>
+      <Path>Library/PackageCache/nuget.mono-cecil@0.1.6-preview</Path>
+      <Path>Packages</Path>
+      <Path>ProjectSettings</Path>
+    </explicitIncludes>
+    <explicitExcludes>
+      <Path>.git</Path>
+      <Path>.github</Path>
+      <Path>.idea</Path>
+      <Path>Library</Path>
+      <Path>Logs</Path>
+      <Path>NuGet</Path>
+      <Path>Temp</Path>
+      <Path>UPM</Path>
+      <Path>build</Path>
+      <Path>obj</Path>
+      <Path>pipelines</Path>
+      <Path>scripts</Path>
+    </explicitExcludes>
+  </component>
+</project>

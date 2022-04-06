@@ -84,6 +84,7 @@ namespace Microsoft.MixedReality.Toolkit.Input
 
         private readonly Stack<GameObject> modalInputStack = new Stack<GameObject>();
         private readonly Stack<GameObject> fallbackInputStack = new Stack<GameObject>();
+        private readonly DigitalInputActionCache translatedInputCache = new DigitalInputActionCache();
 
         /// <inheritdoc />
         public bool IsInputEnabled => disabledRefCount <= 0;
@@ -1334,18 +1335,24 @@ namespace Microsoft.MixedReality.Toolkit.Input
             {
                 inputAction = ProcessRules(inputAction, true);
 
-                // Create input event
-                inputEventData.Initialize(source, handedness, inputAction);
+                // Handle Input Down
+                HandleOnInputDown(source, handedness, inputAction);
+            }
+        }
 
-                // Pass handler through HandleEvent to perform modal/fallback logic
-                if (inputEventData.MixedRealityInputAction == MixedRealityInputAction.None)
-                {
-                    HandleEvent(inputEventData, OnInputDownEventHandler);
-                }
-                else
-                {
-                    HandleEvent(inputEventData, OnInputDownWithActionEventHandler);
-                }
+        private void HandleOnInputDown(IMixedRealityInputSource source, Handedness handedness, MixedRealityInputAction inputAction)
+        {
+            // Create input event
+            inputEventData.Initialize(source, handedness, inputAction);
+
+            // Pass handler through HandleEvent to perform modal/fallback logic
+            if (inputEventData.MixedRealityInputAction == MixedRealityInputAction.None)
+            {
+                HandleEvent(inputEventData, OnInputDownEventHandler);
+            }
+            else
+            {
+                HandleEvent(inputEventData, OnInputDownWithActionEventHandler);
             }
         }
 
@@ -1385,19 +1392,25 @@ namespace Microsoft.MixedReality.Toolkit.Input
             using (RaiseOnInputUpPerfMarker.Auto())
             {
                 inputAction = ProcessRules(inputAction, false);
+                
+                // Handle Input Up
+                HandleOnInputUp(source, handedness, inputAction);
+            }
+        }
 
-                // Create input event
-                inputEventData.Initialize(source, handedness, inputAction);
+        private void HandleOnInputUp(IMixedRealityInputSource source, Handedness handedness, MixedRealityInputAction inputAction)
+        {
+            // Create input event
+            inputEventData.Initialize(source, handedness, inputAction);
 
-                // Pass handler through HandleEvent to perform modal/fallback logic
-                if (inputEventData.MixedRealityInputAction == MixedRealityInputAction.None)
-                {
-                    HandleEvent(inputEventData, OnInputUpEventHandler);
-                }
-                else
-                {
-                    HandleEvent(inputEventData, OnInputUpWithActionEventHandler);
-                }
+            // Pass handler through HandleEvent to perform modal/fallback logic
+            if (inputEventData.MixedRealityInputAction == MixedRealityInputAction.None)
+            {
+                HandleEvent(inputEventData, OnInputUpEventHandler);
+            }
+            else
+            {
+                HandleEvent(inputEventData, OnInputUpWithActionEventHandler);
             }
         }
 
@@ -1419,16 +1432,19 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaiseFloatInputChangedPerfMarker.Auto())
             {
-                inputAction = ProcessRules(inputAction, inputValue);
+                MixedRealityInputAction translatedInputAction = ProcessRules(inputAction, inputValue);
 
-                // Create input event
-                floatInputEventData.Initialize(source, handedness, inputAction, inputValue);
+                if (!CheckAndHandleTranslation(source, handedness, inputAction, translatedInputAction))
+                {
+                    // Create input event
+                    floatInputEventData.Initialize(source, handedness, translatedInputAction, inputValue);
 
-                // Pass handler through HandleEvent to perform modal/fallback logic
-                HandleEvent(floatInputEventData, OnFloatInputChanged);
+                    // Pass handler through HandleEvent to perform modal/fallback logic
+                    HandleEvent(floatInputEventData, OnFloatInputChanged);
+                }
             }
         }
-
+        
         #endregion Float Input Changed
 
         #region Input Position Changed
@@ -1447,13 +1463,16 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaisePositionInputChangedPerfMarker.Auto())
             {
-                inputAction = ProcessRules(inputAction, inputPosition);
+                MixedRealityInputAction translatedInputAction = ProcessRules(inputAction, inputPosition);
 
-                // Create input event
-                vector2InputEventData.Initialize(source, handedness, inputAction, inputPosition);
+                if (!CheckAndHandleTranslation(source, handedness, inputAction, translatedInputAction))
+                {
+                    // Create input event
+                    vector2InputEventData.Initialize(source, handedness, translatedInputAction, inputPosition);
 
-                // Pass handler through HandleEvent to perform modal/fallback logic
-                HandleEvent(vector2InputEventData, OnTwoDoFInputChanged);
+                    // Pass handler through HandleEvent to perform modal/fallback logic
+                    HandleEvent(vector2InputEventData, OnTwoDoFInputChanged);
+                }
             }
         }
 
@@ -1469,13 +1488,16 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaisePositionInputChangedPerfMarker.Auto())
             {
-                inputAction = ProcessRules(inputAction, position);
+                MixedRealityInputAction translatedInputAction = ProcessRules(inputAction, position);
 
-                // Create input event
-                positionInputEventData.Initialize(source, handedness, inputAction, position);
+                if (!CheckAndHandleTranslation(source, handedness, inputAction, translatedInputAction))
+                {
+                    // Create input event
+                    positionInputEventData.Initialize(source, handedness, translatedInputAction, position);
 
-                // Pass handler through HandleEvent to perform modal/fallback logic
-                HandleEvent(positionInputEventData, OnPositionInputChanged);
+                    // Pass handler through HandleEvent to perform modal/fallback logic
+                    HandleEvent(positionInputEventData, OnPositionInputChanged);
+                }
             }
         }
 
@@ -1497,13 +1519,16 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaiseRotationInputChangedPerfMarker.Auto())
             {
-                inputAction = ProcessRules(inputAction, rotation);
+                MixedRealityInputAction translatedInputAction = ProcessRules(inputAction, rotation);
 
-                // Create input event
-                rotationInputEventData.Initialize(source, handedness, inputAction, rotation);
+                if (!CheckAndHandleTranslation(source, handedness, inputAction, translatedInputAction))
+                {
+                    // Create input event
+                    rotationInputEventData.Initialize(source, handedness, translatedInputAction, rotation);
 
-                // Pass handler through HandleEvent to perform modal/fallback logic
-                HandleEvent(positionInputEventData, OnRotationInputChanged);
+                    // Pass handler through HandleEvent to perform modal/fallback logic
+                    HandleEvent(positionInputEventData, OnRotationInputChanged);
+                }
             }
         }
 
@@ -1525,13 +1550,16 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaisePoseInputChangedPerfMarker.Auto())
             {
-                inputAction = ProcessRules(inputAction, inputData);
+                MixedRealityInputAction translatedInputAction = ProcessRules(inputAction, inputData);
 
-                // Create input event
-                poseInputEventData.Initialize(source, handedness, inputAction, inputData);
+                if (!CheckAndHandleTranslation(source, handedness, inputAction, translatedInputAction))
+                {
+                    // Create input event
+                    poseInputEventData.Initialize(source, handedness, inputAction, inputData);
 
-                // Pass handler through HandleEvent to perform modal/fallback logic
-                HandleEvent(poseInputEventData, OnPoseInputChanged);
+                    // Pass handler through HandleEvent to perform modal/fallback logic
+                    HandleEvent(poseInputEventData, OnPoseInputChanged);
+                }
             }
         }
 
@@ -1615,9 +1643,13 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaiseGestureUpdatedPerfMarker.Auto())
             {
-                action = ProcessRules(action, inputData);
-                vector2InputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, action, inputData);
-                HandleEvent(vector2InputEventData, OnGestureVector2PositionUpdated);
+                MixedRealityInputAction translatedAction = ProcessRules(action, inputData);
+
+                if (!CheckAndHandleTranslation(controller.InputSource, controller.ControllerHandedness, action, translatedAction))
+                {
+                    vector2InputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, translatedAction, inputData);
+                    HandleEvent(vector2InputEventData, OnGestureVector2PositionUpdated);
+                }
 
             }
         }
@@ -1634,9 +1666,13 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaiseGestureUpdatedPerfMarker.Auto())
             {
-                action = ProcessRules(action, inputData);
-                positionInputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, action, inputData);
-                HandleEvent(positionInputEventData, OnGesturePositionUpdated);
+                MixedRealityInputAction translatedAction = ProcessRules(action, inputData);
+
+                if (!CheckAndHandleTranslation(controller.InputSource, controller.ControllerHandedness, action, translatedAction))
+                {
+                    positionInputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, translatedAction, inputData);
+                    HandleEvent(positionInputEventData, OnGesturePositionUpdated);
+                }
             }
         }
 
@@ -1652,9 +1688,13 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaiseGestureUpdatedPerfMarker.Auto())
             {
-                action = ProcessRules(action, inputData);
-                rotationInputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, action, inputData);
-                HandleEvent(rotationInputEventData, OnGestureRotationUpdated);
+                MixedRealityInputAction translatedAction = ProcessRules(action, inputData);
+
+                if (!CheckAndHandleTranslation(controller.InputSource, controller.ControllerHandedness, action, translatedAction))
+                {
+                    rotationInputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, translatedAction, inputData);
+                    HandleEvent(rotationInputEventData, OnGestureRotationUpdated);
+                }
             }
         }
 
@@ -1670,9 +1710,13 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaiseGestureUpdatedPerfMarker.Auto())
             {
-                action = ProcessRules(action, inputData);
-                poseInputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, action, inputData);
-                HandleEvent(poseInputEventData, OnGesturePoseUpdated);
+                MixedRealityInputAction translatedAction = ProcessRules(action, inputData);
+
+                if (!CheckAndHandleTranslation(controller.InputSource, controller.ControllerHandedness, action, translatedAction))
+                {
+                    poseInputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, translatedAction, inputData);
+                    HandleEvent(poseInputEventData, OnGesturePoseUpdated);
+                }
             }
         }
 
@@ -1733,9 +1777,13 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaiseGestureCompletedPerfMarker.Auto())
             {
-                action = ProcessRules(action, inputData);
-                vector2InputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, action, inputData);
-                HandleEvent(vector2InputEventData, OnGestureVector2PositionCompleted);
+                MixedRealityInputAction translatedAction = ProcessRules(action, inputData);
+
+                if (!CheckAndHandleTranslation(controller.InputSource, controller.ControllerHandedness, action, translatedAction))
+                {
+                    vector2InputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, translatedAction, inputData);
+                    HandleEvent(vector2InputEventData, OnGestureVector2PositionCompleted);
+                }
             }
         }
 
@@ -1751,9 +1799,13 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaiseGestureCompletedPerfMarker.Auto())
             {
-                action = ProcessRules(action, inputData);
-                positionInputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, action, inputData);
-                HandleEvent(positionInputEventData, OnGesturePositionCompleted);
+                MixedRealityInputAction translatedAction = ProcessRules(action, inputData);
+
+                if (!CheckAndHandleTranslation(controller.InputSource, controller.ControllerHandedness, action, translatedAction))
+                {
+                    positionInputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, translatedAction, inputData);
+                    HandleEvent(positionInputEventData, OnGesturePositionCompleted);
+                }
             }
         }
 
@@ -1769,9 +1821,13 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaiseGestureCompletedPerfMarker.Auto())
             {
-                action = ProcessRules(action, inputData);
-                rotationInputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, action, inputData);
-                HandleEvent(rotationInputEventData, OnGestureRotationCompleted);
+                MixedRealityInputAction translatedAction = ProcessRules(action, inputData);
+
+                if (!CheckAndHandleTranslation(controller.InputSource, controller.ControllerHandedness, action, translatedAction))
+                {
+                    rotationInputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, translatedAction, inputData);
+                    HandleEvent(rotationInputEventData, OnGestureRotationCompleted);
+                }
             }
         }
 
@@ -1787,9 +1843,13 @@ namespace Microsoft.MixedReality.Toolkit.Input
         {
             using (RaiseGestureCompletedPerfMarker.Auto())
             {
-                action = ProcessRules(action, inputData);
-                poseInputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, action, inputData);
-                HandleEvent(poseInputEventData, OnGesturePoseCompleted);
+                MixedRealityInputAction translatedAction = ProcessRules(action, inputData);
+
+                if (!CheckAndHandleTranslation(controller.InputSource, controller.ControllerHandedness, action, translatedAction))
+                {
+                    poseInputEventData.Initialize(controller.InputSource, controller.ControllerHandedness, translatedAction, inputData);
+                    HandleEvent(poseInputEventData, OnGesturePoseCompleted);
+                }
             }
         }
 
@@ -2088,26 +2148,45 @@ namespace Microsoft.MixedReality.Toolkit.Input
             {
                 for (int i = 0; i < inputActionRules.Length; i++)
                 {
-                    if (inputActionRules[i].BaseAction == inputAction && inputActionRules[i].Criteria.Equals(criteria))
+                    if (inputActionRules[i].BaseAction == inputAction)
                     {
-                        if (inputActionRules[i].RuleAction == inputAction)
+                        if (!inputActionRules[i].UseCriteriaRule)
                         {
-                            Debug.LogError("Input Action Rule cannot be the same as the rule's Base Action!");
-                            return inputAction;
+                            if (!inputActionRules[i].Criteria.Equals(criteria))
+                                continue;
                         }
-
-                        if (inputActionRules[i].BaseAction.AxisConstraint != inputActionRules[i].RuleAction.AxisConstraint)
+                        else
                         {
-                            Debug.LogError("Input Action Rule doesn't have the same Axis Constraint as the Base Action!");
-                            return inputAction;
+                            if (!inputActionRules[i].CriteriaRule.ShouldRaise(criteria))
+                                continue;
                         }
-
+                        
+                        if (!ValidateRule(inputActionRules[i]))
+                            return inputAction;
+                        
                         return inputActionRules[i].RuleAction;
                     }
                 }
 
                 return inputAction;
             }
+        }
+
+        private static bool ValidateRule<T>(IInputActionRule<T> rule)
+        {
+            if (rule.RuleAction == rule.BaseAction)
+            {
+                Debug.LogError("Input Action Rule cannot be the same as the rule's Base Action!");
+                return false;
+            }
+
+            if (rule.BaseAction.AxisConstraint != rule.RuleAction.AxisConstraint)
+            {
+                Debug.LogError("Input Action Rule doesn't have the same Axis Constraint as the Base Action!");
+                return false;
+            }
+
+            return true;
         }
 
         private MixedRealityInputAction ProcessRules(MixedRealityInputAction inputAction, bool criteria)
@@ -2170,6 +2249,29 @@ namespace Microsoft.MixedReality.Toolkit.Input
             return inputAction;
         }
 
+        private bool CheckAndHandleTranslation(IMixedRealityInputSource source, Handedness handedness, MixedRealityInputAction inputAction, MixedRealityInputAction translatedInputAction)
+        {
+            if (translatedInputAction.AxisConstraint == AxisType.None || translatedInputAction.AxisConstraint == AxisType.Digital)
+            {
+                if (!translatedInputCache.HasInputTranslation(source, handedness, inputAction))
+                {
+                    HandleOnInputDown(source, handedness, translatedInputAction);
+                    translatedInputCache.Register(source, handedness, inputAction);
+                }
+            }
+            else
+            {
+                if (translatedInputCache.HasInputTranslation(source, handedness, inputAction))
+                {
+                    HandleOnInputUp(source, handedness, translatedInputAction);
+                    translatedInputCache.Deregister(source, handedness, inputAction);
+                }
+
+                return false;
+            }
+
+            return true;
+        }
         #endregion Rules
     }
 }

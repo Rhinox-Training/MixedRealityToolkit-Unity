@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License. 
 
+using System;
 using Microsoft.MixedReality.Toolkit.Editor;
 using Microsoft.MixedReality.Toolkit.Utilities;
 using Microsoft.MixedReality.Toolkit.Utilities.Editor;
@@ -51,6 +52,23 @@ namespace Microsoft.MixedReality.Toolkit.Input.Editor
         private static Vector3 currentVectorCriteria;
         private static Quaternion currentQuaternionCriteria;
         private static MixedRealityPose currentPoseCriteria;
+        
+        private static bool currentBoolCriteriaToggle;
+        private static bool currentSingleAxisCriteriaToggle;
+        private static bool currentDualAxisCriteriaToggle;
+        private static bool currentVectorCriteriaToggle;
+        private static bool currentQuaternionCriteriaToggle;
+        private static bool currentPoseCriteriaToggle;
+
+        private static InputActionRuleCriteriaDigital currentDigitalRuleCriteria;
+        private static InputActionRuleCriteriaSingleAxis currentSingleAxisRuleCriteria;
+        private static InputActionRuleCriteriaDualAxis currentDualAxisRuleCriteria;
+        private static InputActionRuleCriteriaVectorAxis currentVectorRuleCriteria;
+        private static InputActionRuleCriteriaQuaternionAxis currentQuaternionRuleCriteria;
+        private static InputActionRuleCriteriaPoseAxis currentPoseRuleCriteria;
+        
+        private static int[] comparisonIds = System.Array.Empty<int>();
+        private static string[] comparisonLabels = System.Array.Empty<string>();
 
         private static bool[] digitalFoldouts;
         private static bool[] singleAxisFoldouts;
@@ -58,6 +76,8 @@ namespace Microsoft.MixedReality.Toolkit.Input.Editor
         private static bool[] vectorFoldouts;
         private static bool[] quaternionFoldouts;
         private static bool[] poseFoldouts;
+
+        private static GUIContent tempContent;
 
         private MixedRealityInputActionRulesProfile thisProfile;
         private bool isInitialized = false;
@@ -74,10 +94,15 @@ namespace Microsoft.MixedReality.Toolkit.Input.Editor
             inputActionRulesQuaternionAxis = serializedObject.FindProperty("inputActionRulesQuaternionAxis");
             inputActionRulesPoseAxis = serializedObject.FindProperty("inputActionRulesPoseAxis");
 
+            comparisonIds = (int[]) Enum.GetValues(typeof(ActionRuleComparison));
+            comparisonLabels = Enum.GetNames(typeof(ActionRuleComparison));
+            
+            tempContent = new GUIContent();
+
             thisProfile = target as MixedRealityInputActionRulesProfile;
 
             // Only reset if we haven't get done so
-            if (digitalFoldouts == null)
+            if (digitalFoldouts == null || HasFoldoutCountChanged())
             {
                 ResetCriteria();
             }
@@ -96,6 +121,41 @@ namespace Microsoft.MixedReality.Toolkit.Input.Editor
                                         .Select(action => (int)action.Id).ToArray();
 
             isInitialized = true;
+        }
+
+        private bool HasFoldoutCountChanged()
+        {
+            if (digitalFoldouts != null && digitalFoldouts.Length != inputActionRulesDigital.arraySize)
+            {
+                return true;
+            }
+
+            if (singleAxisFoldouts != null && singleAxisFoldouts.Length != inputActionRulesSingleAxis.arraySize)
+            {
+                return true;
+            }
+            
+            if (dualAxisFoldouts != null && dualAxisFoldouts.Length != inputActionRulesDualAxis.arraySize)
+            {
+                return true;
+            }
+            
+            if (vectorFoldouts != null && vectorFoldouts.Length != inputActionRulesVectorAxis.arraySize)
+            {
+                return true;
+            }
+            
+            if (quaternionFoldouts != null && quaternionFoldouts.Length != inputActionRulesQuaternionAxis.arraySize)
+            {
+                return true;
+            }
+            
+            if (poseFoldouts != null && poseFoldouts.Length != inputActionRulesPoseAxis.arraySize)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         public override void OnInspectorGUI()
@@ -201,6 +261,20 @@ namespace Microsoft.MixedReality.Toolkit.Input.Editor
             currentVectorCriteria = Vector3.zero;
             currentQuaternionCriteria = Quaternion.identity;
             currentPoseCriteria = MixedRealityPose.ZeroIdentity;
+            
+            currentBoolCriteriaToggle = false;
+            currentSingleAxisCriteriaToggle = false;
+            currentDualAxisCriteriaToggle = false;
+            currentVectorCriteriaToggle = false;
+            currentQuaternionCriteriaToggle = false;
+            currentPoseCriteriaToggle = false;
+
+            currentDigitalRuleCriteria = new InputActionRuleCriteriaDigital(false);
+            currentSingleAxisRuleCriteria = new InputActionRuleCriteriaSingleAxis(0f);
+            currentDualAxisRuleCriteria = new InputActionRuleCriteriaDualAxis(Vector2.zero);
+            currentVectorRuleCriteria = new InputActionRuleCriteriaVectorAxis(Vector3.zero);
+            currentQuaternionRuleCriteria = new InputActionRuleCriteriaQuaternionAxis(Quaternion.identity);
+            currentPoseRuleCriteria = new InputActionRuleCriteriaPoseAxis(MixedRealityPose.ZeroIdentity);
 
             digitalFoldouts = new bool[inputActionRulesDigital.arraySize];
             singleAxisFoldouts = new bool[inputActionRulesSingleAxis.arraySize];
@@ -214,14 +288,35 @@ namespace Microsoft.MixedReality.Toolkit.Input.Editor
         {
             var inputActions = GetInputActions();
 
-            ruleActionLabels = inputActions.Where(inputAction => inputAction.AxisConstraint == baseAction.AxisConstraint && inputAction.Id != baseAction.Id)
+            ruleActionLabels = inputActions.Where(inputAction => CheckAxisConstraint(inputAction, baseAction.AxisConstraint) && inputAction.Id != baseAction.Id)
                 .Select(action => action.Description).ToArray();
 
-            ruleActionIds = inputActions.Where(inputAction => inputAction.AxisConstraint == baseAction.AxisConstraint && inputAction.Id != baseAction.Id)
+            ruleActionIds = inputActions.Where(inputAction => CheckAxisConstraint(inputAction, baseAction.AxisConstraint) && inputAction.Id != baseAction.Id)
                 .Select(action => (int)action.Id).ToArray();
         }
 
-        private void RenderCriteriaField(MixedRealityInputAction action, SerializedProperty criteriaValue = null)
+        private static bool CheckAxisConstraint(MixedRealityInputAction inputAction, AxisType axisType)
+        {
+            if (inputAction.AxisConstraint == axisType)
+            {
+                return true;
+            }
+
+            if (axisType != AxisType.None &&
+                axisType != AxisType.Raw &&
+                axisType != AxisType.Digital)
+            {
+                return inputAction.AxisConstraint == AxisType.Digital || inputAction.AxisConstraint == AxisType.None;
+            }
+            return false;
+        }
+
+        private string GetToggleButtonText(bool state)
+        {
+            return state ? "Downgrade" : "Upgrade";
+        }
+
+        private void RenderCriteriaField(MixedRealityInputAction action, SerializedProperty criteriaValue = null, SerializedProperty criteriaRuleValue = null, SerializedProperty criteriaRuleComparison = null)
         {
             var isWideMode = EditorGUIUtility.wideMode;
             EditorGUIUtility.wideMode = true;
@@ -235,19 +330,41 @@ namespace Microsoft.MixedReality.Toolkit.Input.Editor
                     case AxisType.Digital:
                         using (new EditorGUILayout.HorizontalScope())
                         {
+                            
                             EditorGUILayout.LabelField(CriteriaContent, GUILayout.Width(128));
-                            EditorGUI.BeginChangeCheck();
-                            var boolValue = EditorGUILayout.Toggle(GUIContent.none, criteriaValue?.boolValue ?? currentBoolCriteria, GUILayout.Width(64), GUILayout.ExpandWidth(true));
-
-                            if (EditorGUI.EndChangeCheck())
+                            //currentBoolCriteriaToggle = RenderCriteriaLabelWithButton(currentBoolCriteriaToggle);
+                            if (!currentBoolCriteriaToggle)
                             {
-                                if (criteriaValue != null)
+                                EditorGUI.BeginChangeCheck();
+                                var boolValue = EditorGUILayout.Toggle(GUIContent.none, criteriaValue?.boolValue ?? currentBoolCriteria, GUILayout.Width(64), GUILayout.ExpandWidth(true));
+
+                                if (EditorGUI.EndChangeCheck())
                                 {
-                                    criteriaValue.boolValue = boolValue;
+                                    if (criteriaValue != null)
+                                    {
+                                        criteriaValue.boolValue = boolValue;
+                                    }
+                                    else
+                                    {
+                                        currentBoolCriteria = boolValue;
+                                    }
                                 }
-                                else
+                            }
+                            else
+                            {
+                                EditorGUI.BeginChangeCheck();
+                                var boolValue = EditorGUILayout.Toggle(GUIContent.none, criteriaRuleValue?.boolValue ?? currentDigitalRuleCriteria.Criteria, GUILayout.Width(64), GUILayout.ExpandWidth(true));
+
+                                if (EditorGUI.EndChangeCheck())
                                 {
-                                    currentBoolCriteria = boolValue;
+                                    if (criteriaRuleValue != null)
+                                    {
+                                        criteriaRuleValue.boolValue = boolValue;
+                                    }
+                                    else
+                                    {
+                                        currentDigitalRuleCriteria.Criteria = boolValue;
+                                    }
                                 }
                             }
                         }
@@ -255,112 +372,138 @@ namespace Microsoft.MixedReality.Toolkit.Input.Editor
                     case AxisType.SingleAxis:
                         using (new EditorGUILayout.HorizontalScope())
                         {
-                            EditorGUILayout.LabelField(CriteriaContent, GUILayout.Width(128));
-                            EditorGUI.BeginChangeCheck();
-                            var floatValue = EditorGUILayout.FloatField(GUIContent.none, criteriaValue?.floatValue ?? currentSingleAxisCriteria, GUILayout.Width(64), GUILayout.ExpandWidth(true));
-
-                            if (EditorGUI.EndChangeCheck())
+                            currentSingleAxisCriteriaToggle = RenderCriteriaLabelWithButton(currentSingleAxisCriteriaToggle);
+                            if (!currentSingleAxisCriteriaToggle)
                             {
-                                if (criteriaValue != null)
-                                {
-                                    criteriaValue.floatValue = floatValue;
-                                }
-                                else
-                                {
-                                    currentSingleAxisCriteria = floatValue;
-                                }
+                                currentSingleAxisCriteria = RenderAndSetField(GUIContent.none, criteriaValue, currentSingleAxisCriteria);
                             }
+                            else
+                            {
+                                currentSingleAxisRuleCriteria.Criteria = RenderAndSetField(GUIContent.none, criteriaRuleValue, currentSingleAxisRuleCriteria.Criteria);
+                                
+                                EditorGUI.BeginChangeCheck();
+                                var enumIndex = EditorGUILayout.IntPopup(criteriaRuleComparison?.enumValueIndex ?? (int) currentSingleAxisRuleCriteria.Comparison, comparisonLabels, comparisonIds, GUILayout.ExpandWidth(true));
+
+                                if (EditorGUI.EndChangeCheck())
+                                {
+                                    if (criteriaRuleComparison != null)
+                                    {
+                                        criteriaRuleComparison.enumValueIndex = enumIndex;
+                                    }
+                                    else
+                                    {
+                                        currentSingleAxisRuleCriteria.Comparison = (ActionRuleComparison) enumIndex;
+                                    }
+                                }
+                            }   
                         }
                         break;
                     case AxisType.DualAxis:
-                        EditorGUILayout.LabelField(CriteriaContent, GUILayout.Width(128));
+                        currentDualAxisCriteriaToggle = RenderCriteriaLabelWithButton(currentDualAxisCriteriaToggle);
                         using (new EditorGUI.IndentLevelScope())
                         {
-                            EditorGUI.BeginChangeCheck();
-                            var dualAxisValue = EditorGUILayout.Vector2Field("Position", criteriaValue?.vector2Value ?? currentDualAxisCriteria, GUILayout.Width(64), GUILayout.ExpandWidth(true));
-
-                            if (EditorGUI.EndChangeCheck())
+                            if (!currentDualAxisCriteriaToggle)
                             {
-                                if (criteriaValue != null)
-                                {
-                                    criteriaValue.vector2Value = dualAxisValue;
-                                }
-                                else
-                                {
-                                    currentDualAxisCriteria = dualAxisValue;
-                                }
+                                currentDualAxisCriteria = RenderAndSetField("Position", criteriaValue, currentDualAxisCriteria);
                             }
+                            else
+                            {
+                                currentDualAxisRuleCriteria.Criteria = RenderAndSetField("Position", criteriaRuleValue, currentDualAxisRuleCriteria.Criteria);
+                            }    
                         }
                         break;
                     case AxisType.ThreeDofPosition:
-                        EditorGUILayout.LabelField(CriteriaContent, GUILayout.Width(128));
+                        currentVectorCriteriaToggle = RenderCriteriaLabelWithButton(currentVectorCriteriaToggle);
                         using (new EditorGUI.IndentLevelScope())
                         {
-                            EditorGUI.BeginChangeCheck();
-                            var positionValue = EditorGUILayout.Vector3Field("Position", criteriaValue?.vector3Value ?? currentVectorCriteria, GUILayout.ExpandWidth(true));
-
-                            if (EditorGUI.EndChangeCheck())
+                            if (!currentVectorCriteriaToggle)
                             {
-                                if (criteriaValue != null)
-                                {
-                                    criteriaValue.vector3Value = positionValue;
-                                }
-                                else
-                                {
-                                    currentVectorCriteria = positionValue;
-                                }
+                                currentVectorCriteria = RenderAndSetField("Position", criteriaValue, currentVectorCriteria);
                             }
+                            else
+                            {
+                                currentVectorRuleCriteria.Criteria = RenderAndSetField("Position", criteriaRuleValue, currentVectorRuleCriteria.Criteria);
+                            }   
                         }
                         break;
                     case AxisType.ThreeDofRotation:
-                        EditorGUILayout.LabelField(CriteriaContent, GUILayout.Width(128));
+                        currentQuaternionCriteriaToggle = RenderCriteriaLabelWithButton(currentQuaternionCriteriaToggle);
                         using (new EditorGUI.IndentLevelScope())
                         {
-                            EditorGUI.BeginChangeCheck();
-                            var rotationValue = EditorGUILayout.Vector3Field("Rotation", criteriaValue?.quaternionValue.eulerAngles ?? currentQuaternionCriteria.eulerAngles, GUILayout.ExpandWidth(true));
-
-                            if (EditorGUI.EndChangeCheck())
+                            if (!currentQuaternionCriteriaToggle)
                             {
-                                if (criteriaValue != null)
-                                {
-                                    criteriaValue.quaternionValue = Quaternion.Euler(rotationValue);
-                                }
-                                else
-                                {
-                                    currentQuaternionCriteria = Quaternion.Euler(rotationValue);
-                                }
+                                currentQuaternionCriteria = RenderAndSetField("Rotation", criteriaValue, currentQuaternionCriteria);
                             }
+                            else
+                            {
+                                currentQuaternionRuleCriteria.Criteria = RenderAndSetField("Rotation", criteriaRuleValue, currentQuaternionRuleCriteria.Criteria);
+                            }    
                         }
                         break;
                     case AxisType.SixDof:
-                        EditorGUILayout.LabelField(CriteriaContent, GUILayout.Width(128));
+                        currentPoseCriteriaToggle = RenderCriteriaLabelWithButton(currentPoseCriteriaToggle);
                         using (new EditorGUI.IndentLevelScope())
                         {
-                            var posePosition = currentPoseCriteria.Position;
-                            var poseRotation = currentPoseCriteria.Rotation;
-
-                            if (criteriaValue != null)
+                            if (!currentPoseCriteriaToggle)
                             {
-                                posePosition = criteriaValue.FindPropertyRelative("position").vector3Value;
-                                poseRotation = criteriaValue.FindPropertyRelative("rotation").quaternionValue;
-                            }
+                                var posePosition = currentPoseCriteria.Position;
+                                var poseRotation = currentPoseCriteria.Rotation;
 
-                            EditorGUI.BeginChangeCheck();
-                            posePosition = EditorGUILayout.Vector3Field("Position", posePosition);
-
-                            poseRotation.eulerAngles = EditorGUILayout.Vector3Field("Rotation", poseRotation.eulerAngles);
-
-                            if (EditorGUI.EndChangeCheck())
-                            {
                                 if (criteriaValue != null)
                                 {
-                                    criteriaValue.FindPropertyRelative("position").vector3Value = posePosition;
-                                    criteriaValue.FindPropertyRelative("rotation").quaternionValue = poseRotation;
+                                    posePosition = criteriaValue.FindPropertyRelative("position").vector3Value;
+                                    poseRotation = criteriaValue.FindPropertyRelative("rotation").quaternionValue;
                                 }
-                                else
+
+                                EditorGUI.BeginChangeCheck();
+                                posePosition = EditorGUILayout.Vector3Field("Position", posePosition);
+
+                                poseRotation.eulerAngles = EditorGUILayout.Vector3Field("Rotation", poseRotation.eulerAngles);
+
+                                if (EditorGUI.EndChangeCheck())
                                 {
-                                    currentPoseCriteria.Position = posePosition;
-                                    currentPoseCriteria.Rotation = poseRotation;
+                                    if (criteriaValue != null)
+                                    {
+                                        criteriaValue.FindPropertyRelative("position").vector3Value = posePosition;
+                                        criteriaValue.FindPropertyRelative("rotation").quaternionValue = poseRotation;
+                                    }
+                                    else
+                                    {
+                                        currentPoseCriteria.Position = posePosition;
+                                        currentPoseCriteria.Rotation = poseRotation;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                var posePosition = currentPoseRuleCriteria.Criteria.Position;
+                                var poseRotation = currentPoseRuleCriteria.Criteria.Rotation;
+
+                                if (criteriaRuleValue != null)
+                                {
+                                    posePosition = criteriaRuleValue.FindPropertyRelative("position").vector3Value;
+                                    poseRotation = criteriaRuleValue.FindPropertyRelative("rotation").quaternionValue;
+                                }
+
+                                EditorGUI.BeginChangeCheck();
+                                posePosition = EditorGUILayout.Vector3Field("Position", posePosition);
+
+                                poseRotation.eulerAngles = EditorGUILayout.Vector3Field("Rotation", poseRotation.eulerAngles);
+
+                                if (EditorGUI.EndChangeCheck())
+                                {
+                                    if (criteriaRuleValue != null)
+                                    {
+                                        criteriaRuleValue.FindPropertyRelative("position").vector3Value = posePosition;
+                                        criteriaRuleValue.FindPropertyRelative("rotation").quaternionValue = poseRotation;
+                                    }
+                                    else
+                                    {
+                                        var criteriaPoseStruct = currentPoseRuleCriteria.Criteria;
+                                        criteriaPoseStruct.Position = posePosition;
+                                        criteriaPoseStruct.Rotation = poseRotation;
+                                        currentPoseRuleCriteria.Criteria = criteriaPoseStruct;
+                                    }
                                 }
                             }
                         }
@@ -369,6 +512,129 @@ namespace Microsoft.MixedReality.Toolkit.Input.Editor
 
                 EditorGUIUtility.wideMode = isWideMode;
             }
+        }
+
+        private void RenderCriteriaRuleField(MixedRealityInputAction action, SerializedProperty useCriteriaRule = null, SerializedProperty criteriaRuleValue = null)
+        {
+            var isWideMode = EditorGUIUtility.wideMode;
+            EditorGUIUtility.wideMode = true;
+            if (action != MixedRealityInputAction.None)
+            {
+                switch (action.AxisConstraint)
+                {
+                    default:
+                        EditorGUILayout.HelpBox("Base rule must have a valid axis constraint.", MessageType.Warning);
+                        break;
+                    case AxisType.Digital:
+                        using (new EditorGUILayout.HorizontalScope())
+                        {
+                            EditorGUILayout.BeginFoldoutHeaderGroup()
+                        }
+
+                        break;
+                }
+            }
+
+            EditorGUIUtility.wideMode = isWideMode;
+        }
+
+        private float RenderAndSetField(string label, SerializedProperty fieldProperty, float fallback)
+        {
+            tempContent.text = label;
+            return RenderAndSetField(tempContent, fieldProperty, fallback);
+        }
+
+        private float RenderAndSetField(GUIContent label, SerializedProperty fieldProperty, float fallback)
+        {
+            EditorGUI.BeginChangeCheck();
+            var floatValue = EditorGUILayout.FloatField(label, fieldProperty?.floatValue ?? fallback, GUILayout.Width(64), GUILayout.ExpandWidth(true));
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                if (fieldProperty != null)
+                {
+                    fieldProperty.floatValue = floatValue;
+                }
+                else
+                {
+                    fallback = floatValue;
+                }
+            }
+
+            return fallback;
+        }
+        
+        private Vector2 RenderAndSetField(string label, SerializedProperty fieldProperty, Vector2 fallback)
+        {
+            EditorGUI.BeginChangeCheck();
+            var positionValue = EditorGUILayout.Vector2Field(label, fieldProperty?.vector2Value ?? fallback, GUILayout.ExpandWidth(true));
+            
+            if (EditorGUI.EndChangeCheck())
+            {
+                if (fieldProperty != null)
+                {
+                    fieldProperty.vector2Value = positionValue;
+                }
+                else
+                {
+                    fallback = positionValue;
+                }
+            }
+
+            return fallback;
+        }
+
+        private Vector3 RenderAndSetField(string label, SerializedProperty fieldProperty, Vector3 fallback)
+        {
+            EditorGUI.BeginChangeCheck();
+            var positionValue = EditorGUILayout.Vector3Field(label, fieldProperty?.vector3Value ?? fallback, GUILayout.ExpandWidth(true));
+            
+            if (EditorGUI.EndChangeCheck())
+            {
+                if (fieldProperty != null)
+                {
+                    fieldProperty.vector3Value = positionValue;
+                }
+                else
+                {
+                    fallback = positionValue;
+                }
+            }
+
+            return fallback;
+        }
+
+        private Quaternion RenderAndSetField(string label, SerializedProperty fieldProperty, Quaternion fallback)
+        {
+            EditorGUI.BeginChangeCheck();
+            var rotationValue = EditorGUILayout.Vector3Field(label, fieldProperty?.quaternionValue.eulerAngles ?? fallback.eulerAngles, GUILayout.ExpandWidth(true));
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                if (fieldProperty != null)
+                {
+                    fieldProperty.quaternionValue = Quaternion.Euler(rotationValue);
+                }
+                else
+                {
+                    fallback = Quaternion.Euler(rotationValue);
+                }
+            }
+
+            return fallback;
+        }
+
+        private bool RenderCriteriaLabelWithButton(bool toggle)
+        {
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button(GetToggleButtonText(toggle), GUILayout.ExpandWidth(false)))
+            {
+                toggle = !toggle;
+            }
+
+            EditorGUILayout.LabelField(CriteriaContent, GUILayout.Width(128));
+            EditorGUILayout.EndHorizontal();
+            return toggle;
         }
 
         private void AddRule()
@@ -380,11 +646,15 @@ namespace Microsoft.MixedReality.Toolkit.Input.Editor
                     inputActionRulesDigital.arraySize += 1;
                     rule = inputActionRulesDigital.GetArrayElementAtIndex(inputActionRulesDigital.arraySize - 1);
                     rule.FindPropertyRelative("criteria").boolValue = currentBoolCriteria;
+                    var criteriaRuleDigital = rule.FindPropertyRelative("criteriaRule");
+                    criteriaRuleDigital.FindPropertyRelative("criteria").boolValue = currentDigitalRuleCriteria.Criteria;
                     break;
                 case AxisType.SingleAxis:
                     inputActionRulesSingleAxis.arraySize += 1;
                     rule = inputActionRulesSingleAxis.GetArrayElementAtIndex(inputActionRulesSingleAxis.arraySize - 1);
                     rule.FindPropertyRelative("criteria").floatValue = currentSingleAxisCriteria;
+                    var criteriaRuleSingle = rule.FindPropertyRelative("criteriaRule");
+                    criteriaRuleSingle.FindPropertyRelative("criteria").floatValue = currentSingleAxisRuleCriteria.Criteria;
                     break;
                 case AxisType.DualAxis:
                     inputActionRulesDualAxis.arraySize += 1;
@@ -498,6 +768,10 @@ namespace Microsoft.MixedReality.Toolkit.Input.Editor
             {
                 var rule = list.GetArrayElementAtIndex(i);
                 var criteria = rule.FindPropertyRelative("criteria");
+                var useCriteriaRule = rule.FindPropertyRelative("useCriteriaRule");
+                var criteriaRule = rule.FindPropertyRelative("criteriaRule");
+                var criteriaRuleValue = criteriaRule.FindPropertyRelative("criteria");
+                var criteriaRuleComparison = criteriaRule.FindPropertyRelative("comparison");
 
                 var baseAction = rule.FindPropertyRelative("baseAction");
                 var baseActionId = baseAction.FindPropertyRelative("id");
@@ -532,13 +806,18 @@ namespace Microsoft.MixedReality.Toolkit.Input.Editor
                     if (baseActionId.intValue == ruleActionId.intValue || newBaseAction == MixedRealityInputAction.None || baseActionConstraint.intValue != ruleActionConstraint.intValue)
                     {
                         criteria.Reset();
+                        criteriaRule.Reset();
                         ruleActionId.intValue = (int)MixedRealityInputAction.None.Id;
                         ruleActionDescription.stringValue = MixedRealityInputAction.None.Description;
                         ruleActionConstraint.intValue = (int)MixedRealityInputAction.None.AxisConstraint;
                     }
-
-                    RenderCriteriaField(newBaseAction, criteria);
-
+                    
+                    EditorGUI.BeginDisabledGroup(useCriteriaRule.boolValue);
+                    RenderCriteriaField(newBaseAction, criteria, criteriaRuleValue, criteriaRuleComparison);
+                    EditorGUI.EndDisabledGroup();
+                    RenderCriteriaRuleField(newBaseAction, criteriaRule);
+                    
+                    
                     MixedRealityInputAction newRuleAction;
                     ruleActionId.intValue = RenderRuleInputAction(ruleActionId.intValue, out newRuleAction);
                     ruleActionDescription.stringValue = newRuleAction.Description;
